@@ -2,17 +2,32 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const { graphqlExpress, graphiqlExpress } = require('apollo-server-express');
 const { makeExecutableSchema } = require('graphql-tools');
-const {db, dbBook} = require('./dbconfig')
+const db = require('./dbconfig')
+const dbmodel = require('./dbmodels/dbmodel')
 
 // The GraphQL schema in string form
 const typeDefs = `
-  type Query { books: [Book] }
-  type Book { title: String, author: String }
+  type Query { 
+    person(name: String, gender: String): [People] 
+  }
+  type People { 
+    id: Int,
+    name: String, 
+    surname: String,
+    gender: String,
+    DOB: String,
+    bodyweight: String
+  }
 `;
 
 // The resolvers
-const resolvers = {  
-  Query: { books: async () => await dbBook.findAll() },  
+const resolvers = {
+  Query: {
+    person: async (parent, args) => {
+      results = await dbmodel.Person.findAll({include: [{model: dbmodel.BodyWeight, nested: false}]}, {where: args});     
+      return results;
+    }
+  },
 };
 
 // Put together a schema
@@ -30,9 +45,12 @@ app.use('/graphql', bodyParser.json(), graphqlExpress({ schema }));
 // GraphiQL, a visual editor for queries
 app.use('/graphiql', graphiqlExpress({ endpointURL: '/graphql' }));
 
-db
+//db.sequelize.sync({force: true});
+
+db.sequelize
   .authenticate()
   .then(() => {
+    dbmodel.seedPersonData();
     console.log('Connection has been established successfully.');
   })
   .catch(err => {
