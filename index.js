@@ -45,12 +45,14 @@ app.use('/graphql', bodyParser.json(), graphqlExpress({ schema }));
 // GraphiQL, a visual editor for queries
 app.use('/graphiql', graphiqlExpress({ endpointURL: '/graphql' }));
 
-//db.sequelize.sync({force: true});
+// db.sequelize.sync({force: true}).then(() => {
+//   dbmodel.seedPersonData();  
+// })
 
 db.sequelize
   .authenticate()
   .then(() => {
-    dbmodel.seedPersonData();
+    dbmodel.seedPersonData();  
     console.log('Connection has been established successfully.');
   })
   .catch(err => {

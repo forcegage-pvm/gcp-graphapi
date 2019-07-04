@@ -14,3 +14,7 @@ automatic_scaling:
   cool_down_period_sec: 60
   cpu_utilization:
     target_utilization: 0.80
+
+# make sure to include code below
+beta_settings:
+    cloud_sql_instances: forcegage-gcp:europe-west1:forcegage-mysql-01
