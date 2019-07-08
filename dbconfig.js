@@ -7,7 +7,7 @@ const sequelize = new Sequelize('forcegage01', 'root', 'q1w2e3r4t5y6', {
   dialect: 'mysql'
 });
 
-// ./cloud_sql_proxy -instances=forcegage-gcp:europe-west1:forcegage-mysql-01=tcp:3307 "&" mysql -u root --host 127.0.0.1  --port 3307
+// ./cloud_sql_proxy -instances=forcegage-gcp:europe-west1:forcegage-mysql-01=tcp:3307 -credential_file=F:/keys/forcegage-gcp-af6a75d808a5.json
 
 // const sequelize = new Sequelize("forcegage01", "root", "q1w2e3r4t5y6", {
 //   dialect: 'mysql',

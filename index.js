@@ -4,6 +4,7 @@ const { graphqlExpress, graphiqlExpress } = require('apollo-server-express');
 const { makeExecutableSchema } = require('graphql-tools');
 const db = require('./dbconfig')
 const dbmodel = require('./dbmodels/dbmodel')
+const graphqlFields = require('graphql-fields');
 
 // The GraphQL schema in string form
 const typeDefs = `
@@ -23,8 +24,13 @@ const typeDefs = `
 // The resolvers
 const resolvers = {
   Query: {
-    person: async (parent, args) => {
-      results = await dbmodel.Person.findAll({include: [{model: dbmodel.BodyWeight, nested: false}]}, {where: args});     
+    person: async (root, args, context, info) => {
+      const topLevelFields = Object.keys(graphqlFields(info));
+      if ("bodyweight" in topLevelFields){
+        results = await dbmodel.Person.findAll({where: args});
+      } else {
+        results = await dbmodel.Person.findAll({where: args, include: dbmodel.BodyWeight});
+      }
       return results;
     }
   },
@@ -45,9 +51,7 @@ app.use('/graphql', bodyParser.json(), graphqlExpress({ schema }));
 // GraphiQL, a visual editor for queries
 app.use('/graphiql', graphiqlExpress({ endpointURL: '/graphql' }));
 
-// db.sequelize.sync({force: true}).then(() => {
-//   dbmodel.seedPersonData();  
-// })
+//db.sequelize.sync({force: true});
 
 db.sequelize
   .authenticate()
