@@ -1,9 +1,8 @@
 const Sequelize = require('sequelize');
-const { sequelize } = require('../dbconfig')
+const { sequelize } = require('../../dbconfig')
 var faker = require('faker');
 
 class Person extends Sequelize.Model {
-
 }
 
 Person.init({
@@ -25,14 +24,24 @@ Person.init({
         sequelize, modelName: 'person',
         getterMethods: {
             fullName() {
-                return this.firstname + ' ' + this.lastname;
+                return this.name + ' ' + this.surname;
             },
             bodyweight() {
-                return this.bodyWeight.weight;
+                sorted = this.bodyWeights.sort((a, b) => {
+                    if (a.updatedAt > b.updatedAt) { return -1; }
+                    if (a.updatedAt < b.updatedAt) { return 1; }
+                    return 0;
+                })
+                return sorted[0].weight;
+
+            },
+            age() {
+                var bdate = this.DOB;
+                var now = new Date();
+                var diffYears = parseInt(((now - bdate) / (1000 * 60 * 60 * 24)) / 365.25);
+                return diffYears;
             }
-
         },
-
     });
 
 class BodyWeight extends Sequelize.Model { }
@@ -42,28 +51,7 @@ BodyWeight.init({
         type: Sequelize.FLOAT,
         allowNull: false
     },
-    date: {
-        type: Sequelize.DATE,
-        allowNull: true
-    }
 }, { sequelize, modelName: 'bodyWeight' });
-
-SeedData = function SeedData() {
-    Person.create({
-        name: faker.name.firstName(), 
-        surname: faker.name.lastName(),
-        gender: "MALE", 
-        DOB: faker.date.past(), 
-        bodyWeight: { weight: 50.0 }
-    }, {include: [BodyWeight]})
-        .then((person) => {
-            person.update({bodyWeight: {weight: 60.5}}, {include: [BodyWeight]});
-        });
-}
-
 
 exports.BodyWeight = BodyWeight;
 exports.Person = Person;
-exports.SeedData = function () {
-    SeedData();
-};

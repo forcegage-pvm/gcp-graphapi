@@ -1,5 +1,5 @@
 const Sequelize = require('sequelize');
-const { sequelize } = require('../dbconfig')
+const { sequelize } = require('../../dbconfig')
 
 class ExerciseType extends Sequelize.Model { }
 
@@ -8,11 +8,12 @@ ExerciseType.init({
         type: Sequelize.INTEGER,
         allowNull: false
     },
-    descrip: {
+    description: {
         type: Sequelize.STRING,
-        allowNull: false
+        allowNull: false,
+        unique: true
     },
 }, {
         sequelize, modelName: 'exerciseType',});
 
-exports.ExerciseType = ExerciseType;
+exports.Exercise = ExerciseType;
