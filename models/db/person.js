@@ -27,6 +27,7 @@ Person.init({
                 return this.name + ' ' + this.surname;
             },
             bodyweight() {
+                if (this.bodyWeights == undefined || this.bodyWeights.length == 0) return -1
                 sorted = this.bodyWeights.sort((a, b) => {
                     if (a.updatedAt > b.updatedAt) { return -1; }
                     if (a.updatedAt < b.updatedAt) { return 1; }
@@ -36,6 +37,7 @@ Person.init({
 
             },
             age() {
+                if (this.DOB == undefined) return -1
                 var bdate = this.DOB;
                 var now = new Date();
                 var diffYears = parseInt(((now - bdate) / (1000 * 60 * 60 * 24)) / 365.25);

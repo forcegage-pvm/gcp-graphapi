@@ -1,6 +1,5 @@
 const Sequelize = require('sequelize');
 const { sequelize } = require('../../dbconfig')
-const { Exercise } = require('./exerciseType')
 const global = require('../../global')
 
 class Session extends Sequelize.Model {
@@ -24,14 +23,9 @@ Session.init({
         sequelize, modelName: 'session',
         getterMethods: {
             async exercise() {
-                if (this.exerciseCd){
-                    description = await global.exerciseTypes(this.exerciseCd);
-                    return description
-                } else {
-                    return ""
-                }
-                return ""
-                
+                if (!this.exerciseCd) return ""
+                description = await global.exerciseTypes(this.exerciseCd);
+                return description
             },
         }
     });

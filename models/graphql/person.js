@@ -2,6 +2,7 @@ const graphql = require('graphql')
 const { GraphQLDate, GraphQLTime, GraphQLDateTime } = require('graphql-iso-date');
 const dbmodel = require('../../models/db/dbmodel')
 const session = require('./session')
+const exercises = require('./exercises')
 
 const Person = new graphql.GraphQLObjectType({
   name: 'Person',
@@ -25,30 +26,22 @@ const Person = new graphql.GraphQLObjectType({
           return parent.sessions;
         }
       }
-    }
+    },
   })
 });
-
-const updateBodyWeight = {
-  type: Person,
-  args: { id: { type: graphql.GraphQLNonNull(graphql.GraphQLInt) }, bodyweight: { type: graphql.GraphQLNonNull(graphql.GraphQLInt) } },
-  resolve: async (parent, args, context, resolveInfo) => {
-    pers = await dbmodel.Person.findOne({ where: { id: args.id }, include: dbmodel.BodyWeight });
-    bodyweight = await dbmodel.BodyWeight.create({
-      weight: args.bodyweight
-    })
-    await pers.addBodyWeights(bodyweight)
-    pers = await dbmodel.Person.findOne({ where: { id: args.id }, include: dbmodel.BodyWeight });
-    return pers;
-  }
-}
 
 const person = {
   type: Person,
   args: { id: { type: graphql.GraphQLNonNull(graphql.GraphQLInt) } },
   //where: (personTable, args, context) => `${playerTable}.id = ${args.id}`,
   resolve: async (parent, args, context, resolveInfo) => {
-    pers = await dbmodel.Person.findOne({ where: args, include: [dbmodel.BodyWeight, dbmodel.Session] });
+    pers = await dbmodel.Person.findOne({ 
+      where: args, 
+      include: [{ 
+        model: dbmodel.Session,
+          include: [dbmodel.ExerciseRep, dbmodel.Statistic,
+            {model: dbmodel.ExerciseSet, include: [{model: dbmodel.ExerciseRep, include: dbmodel.Statistic}, dbmodel.Statistic]}] },
+        dbmodel.BodyWeight], });
     return pers;
   }
 }
@@ -65,19 +58,63 @@ const people = {
     if ("age" in args) {
       age = args.age
       delete args.age
-      results = await dbmodel.Person.findAll({ where: args, include: [dbmodel.BodyWeight, dbmodel.Session] });
+      results = await dbmodel.Person.findAll({ where: args, include: [{ model: dbmodel.Session, include: [dbmodel.Statistic] }, dbmodel.BodyWeight], });
       results = results.filter((pers) => {
         return pers.age == age
       })
     } else {
-      results = await dbmodel.Person.findAll({ where: args, include: [dbmodel.BodyWeight, dbmodel.Session] });
+      results = await dbmodel.Person.findAll({ where: args, include: [{ model: dbmodel.Session, include: [dbmodel.Statistic] }, dbmodel.BodyWeight], });
     }
     return results
   }
 }
 
+const updateBodyWeight = {
+  type: Person,
+  args: { id: { type: graphql.GraphQLNonNull(graphql.GraphQLInt) }, bodyweight: { type: graphql.GraphQLNonNull(graphql.GraphQLInt) } },
+  resolve: async (parent, args, context, resolveInfo) => {
+    pers = await dbmodel.Person.findOne({ where: { id: args.id }, include: dbmodel.BodyWeight });
+    bodyweight = await dbmodel.BodyWeight.create({
+      weight: args.bodyweight
+    })
+    await pers.addBodyWeights(bodyweight)
+    pers = await dbmodel.Person.findOne({ where: { id: args.id }, include: dbmodel.BodyWeight });
+    return pers;
+  }
+}
+
+const addPerson = {
+  type: Person,
+  args: {
+    name: { type: graphql.GraphQLNonNull(graphql.GraphQLString) },
+    surname: { type: graphql.GraphQLNonNull(graphql.GraphQLString) },
+    gender: { type: graphql.GraphQLNonNull(graphql.GraphQLString) },
+    DOB: { type: GraphQLDate },
+    bodyweight: { type: graphql.GraphQLFloat },
+  },
+  resolve: async (parent, args, context, resolveInfo) => {
+    existingPerson = await dbmodel.Person.findOne({ where: { name: args.name, surname: args.surname } });
+    if (existingPerson) return existingPerson;
+    newPerson = await dbmodel.Person.create({
+        name: args.name,
+        surname: args.surname,
+        gender: args.gender,
+        DOB: args.DOB,
+        bodyWeight: { weight: args.bodyWeight }
+    }, { include: [dbmodel.BodyWeight] })
+    if ("bodyweight" in args) {
+      bodyweight = await dbmodel.BodyWeight.create({
+        weight: args.bodyweight
+      })
+      await newPerson.addBodyWeights(bodyweight)
+    }
+    return newPerson;
+  }
+}
+
+
 const queries = { person, people }
-const mutations = { updateBodyWeight }
+const mutations = { updateBodyWeight, addPerson }
 
 exports.Person = Person
 exports.mutations = mutations

@@ -1,13 +1,35 @@
 const person = require('./person')
 const session = require('./session')
-const exercise = require('./exerciseType')
+const exerciseType = require('./exerciseType')
+const statistic = require('./statistic')
+const exercises = require('./exercises')
 const faker = require('faker')
 
+// person has a history of body weights.
+// the lastest one is his current body weight
 person.Person.hasMany(person.BodyWeight);
-person.Person.hasMany(session.Session);
 person.BodyWeight.belongsTo(person.Person);
+// person can have multiple sessions.
+person.Person.hasMany(session.Session);
 session.Session.belongsTo(person.Person);
-session.Session.hasOne(exercise.Exercise);
+// session can only be for one exercise type
+session.Session.hasOne(exerciseType.Exercise);
+// session can have multiple exercise statistics
+session.Session.hasMany(statistic.Statistic);
+// a session can have 1 or more sets of exercises
+session.Session.hasMany(exercises.ExerciseSet);
+exercises.ExerciseSet.belongsTo(session.Session);
+// a exercise set can have 1 or more reps
+exercises.ExerciseSet.hasMany(exercises.ExerciseRep);
+exercises.ExerciseRep.belongsTo(exercises.ExerciseSet);
+// a set and a rep can have many statistics
+exercises.ExerciseSet.hasMany(statistic.Statistic);
+exercises.ExerciseRep.hasMany(statistic.Statistic);
+//
+session.Session.hasMany(exercises.ExerciseRep);
+exercises.ExerciseRep.belongsTo(session.Session);
+
+
 
 
 SeedData = async function SeedData() {
@@ -36,11 +58,29 @@ SeedData = async function SeedData() {
             exerciseCd: 1
         })
         await pers.setSessions(sess)
+        stat = await statistic.Statistic.create({
+            cd: 1,
+            description: "Power",
+            class: "Eccentric",
+            aggregation: "avg",
+            value: 451.25
+        })
+        stat = await statistic.Statistic.create({
+            cd: 1,
+            description: "Power",
+            class: "Concentric",
+            aggregation: "avg",
+            value: 224.65
+        })        
+        await sess.setStatistics(stat)
     }
 }
 
 exports.BodyWeight = person.BodyWeight;
 exports.Person = person.Person;
 exports.Session = session.Session;
-exports.Exercise = exercise.Exercise;
+exports.Exercise = exerciseType.Exercise;
+exports.Statistic = statistic.Statistic;
+exports.ExerciseRep = exercises.ExerciseRep;
+exports. ExerciseSet = exercises.ExerciseSet;
 exports.seedPersonData = function () { SeedData(); };

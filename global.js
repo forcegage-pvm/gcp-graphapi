@@ -11,4 +11,9 @@ exerciseTypes = async function(cd) {
     return theExercise[0].description
 }
 
+initGlobals = async function(){
+    _exerciseTypes = await Exercise.findAll();
+}
+
 exports.exerciseTypes = exerciseTypes
+exports.initGlobals = initGlobals

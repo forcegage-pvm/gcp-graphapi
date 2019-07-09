@@ -1,6 +1,8 @@
 const person = require('./person')
 const session = require('./session')
-const exercise = require('./exercises')
+const exercise = require('./exerciseType')
+const exercises = require('./exercises')
+const statistic = require('./statistic')
 const graphql = require('graphql')
 
 const QueryRoot = new graphql.GraphQLObjectType({
@@ -12,15 +14,21 @@ const QueryRoot = new graphql.GraphQLObjectType({
       sessions: session.queries.sessions,
       exercise: exercise.queries.exercise,
       exercises: exercise.queries.exercises,
+      exerciseSet: exercises.queries.exerciseSet,
+      exerciseSets: exercises.queries.exerciseSets,
     })
   })
 
   const MutationRoot = new graphql.GraphQLObjectType({
     name: 'Mutation',
     fields: () => ({
+      addPerson: person.mutations.addPerson,
       updateBodyWeight: person.mutations.updateBodyWeight,
       addSession: session.mutations.addSession,
-      addExercise: exercise.mutations.addExercise
+      addExercise: exercise.mutations.addExercise,
+      addStatistic: statistic.mutations.addStatistic,
+      addExerciseSet: exercises.mutations.addExerciseSet,
+      addExerciseRep: exercises.mutations.addExerciseRep
     })
   })
 
