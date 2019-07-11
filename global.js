@@ -1,5 +1,7 @@
 const { Exercise } = require('./models/db/exerciseType')
 
+const currentTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
 var _exerciseTypes = undefined;
 
 exerciseTypes = async function(cd) {
@@ -17,3 +19,4 @@ initGlobals = async function(){
 
 exports.exerciseTypes = exerciseTypes
 exports.initGlobals = initGlobals
+exports.TimeZone = currentTimeZone

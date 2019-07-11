@@ -3,6 +3,7 @@ const { GraphQLDate, GraphQLTime, GraphQLDateTime } = require('graphql-iso-date'
 const dbmodel = require('../../models/db/dbmodel')
 const session = require('./session')
 const exercises = require('./exercises')
+const Sequelize = require('sequelize');
 
 const Person = new graphql.GraphQLObjectType({
   name: 'Person',
@@ -16,32 +17,37 @@ const Person = new graphql.GraphQLObjectType({
     age: { type: graphql.GraphQLInt },
     sessions: {
       type: graphql.GraphQLList(session.Session),
-      args: { weight: { type: graphql.GraphQLInt } },
+      args: { 
+        weight: { type: graphql.GraphQLInt },
+        exercise: { type: graphql.GraphQLString },
+      },
       resolve: async (parent, args, context, resolveInfo) => {
-        if ("weight" in args) {
-          return parent.sessions.filter((session) => {
-            return session.weight == args.weight
-          })
-        } else {
-          return parent.sessions;
-        }
+        sessions = await dbmodel.Session.findAll({ where: 
+          {[Sequelize.Op.and]: [{personId: parent.id}, args]}
+        })
+        return sessions;
       }
     },
   })
 });
 
+function isFieldRequested(fieldName, selectionSet) {
+  result = false;
+  for (var selection in selectionSet.selections) {
+    if (fieldName == selectionSet.selections[selection].name.value) {
+      return true
+    } else if (selectionSet.selections[selection].selectionSet != undefined){
+      result = isFieldRequested(fieldName, selectionSet.selections[selection].selectionSet)
+    }
+  }
+  return result;
+}
+
 const person = {
   type: Person,
   args: { id: { type: graphql.GraphQLNonNull(graphql.GraphQLInt) } },
-  //where: (personTable, args, context) => `${playerTable}.id = ${args.id}`,
   resolve: async (parent, args, context, resolveInfo) => {
-    pers = await dbmodel.Person.findOne({ 
-      where: args, 
-      include: [{ 
-        model: dbmodel.Session,
-          include: [dbmodel.ExerciseRep, dbmodel.Statistic,
-            {model: dbmodel.ExerciseSet, include: [{model: dbmodel.ExerciseRep, include: dbmodel.Statistic}, dbmodel.Statistic]}] },
-        dbmodel.BodyWeight], });
+    pers = await dbmodel.Person.findOne({ where: args, include: [dbmodel.BodyWeight] });
     return pers;
   }
 }
@@ -96,11 +102,11 @@ const addPerson = {
     existingPerson = await dbmodel.Person.findOne({ where: { name: args.name, surname: args.surname } });
     if (existingPerson) return existingPerson;
     newPerson = await dbmodel.Person.create({
-        name: args.name,
-        surname: args.surname,
-        gender: args.gender,
-        DOB: args.DOB,
-        bodyWeight: { weight: args.bodyWeight }
+      name: args.name,
+      surname: args.surname,
+      gender: args.gender,
+      DOB: args.DOB,
+      bodyWeight: { weight: args.bodyWeight }
     }, { include: [dbmodel.BodyWeight] })
     if ("bodyweight" in args) {
       bodyweight = await dbmodel.BodyWeight.create({

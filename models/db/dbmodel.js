@@ -52,7 +52,7 @@ SeedData = async function SeedData() {
         })
         await pers.setBodyWeights(bodyweight)
         sess = await session.Session.create({
-            timestamp: Date.now(),
+            timestamp: new Date().toISOString(),
             weight: parseInt(Math.random(60) * 100),
             duration: parseInt(Math.random(600) * 1000),
             exerciseCd: 1
@@ -71,7 +71,7 @@ SeedData = async function SeedData() {
             class: "Concentric",
             aggregation: "avg",
             value: 224.65
-        })        
+        })
         await sess.setStatistics(stat)
     }
 }
@@ -82,5 +82,5 @@ exports.Session = session.Session;
 exports.Exercise = exerciseType.Exercise;
 exports.Statistic = statistic.Statistic;
 exports.ExerciseRep = exercises.ExerciseRep;
-exports. ExerciseSet = exercises.ExerciseSet;
+exports.ExerciseSet = exercises.ExerciseSet;
 exports.seedPersonData = function () { SeedData(); };

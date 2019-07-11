@@ -5,11 +5,6 @@ class Statistic extends Sequelize.Model {
 }
 
 Statistic.init({
-    // 1
-    cd: {
-        type: Sequelize.INTEGER,
-        allowNull: false
-    },
     // Power
     description: {
         type: Sequelize.STRING,
@@ -29,6 +24,18 @@ Statistic.init({
     value: {
         type: Sequelize.FLOAT,
         allowNull: false
+    },
+    sessionId: {
+        type: Sequelize.INTEGER,
+        allowNull: true
+    },
+    exerciseSetId: {
+        type: Sequelize.INTEGER,
+        allowNull: true
+    },
+    exerciseRepId: {
+        type: Sequelize.INTEGER,
+        allowNull: true
     },
 }, {
         sequelize, modelName: 'statistic'

@@ -1,19 +1,40 @@
 const graphql = require('graphql')
 const { GraphQLDate, GraphQLTime, GraphQLDateTime } = require('graphql-iso-date');
 const dbmodel = require('../../models/db/dbmodel')
-const {Statistic} = require('../graphql/statistic')
+const { Statistic } = require('../graphql/statistic')
+const { GrapQLDateTime } = require('./dateTimeScalar')
+const Sequelize = require('sequelize')
+const moment = require('moment-timezone')
+const global = require('../../global')
 
 // Sets
 const ExerciseSet = new graphql.GraphQLObjectType({
     name: 'ExerciseSet',
     fields: () => ({
         id: { type: graphql.GraphQLInt },
-        childCount: { type: graphql.GraphQLInt },
+        setNo: { type: graphql.GraphQLInt },
+        sessionId: { type: graphql.GraphQLInt },
         duration: { type: graphql.GraphQLInt },
-        timestamp: { type: GraphQLDateTime },
+        timestamp: {
+            type: graphql.GraphQLString,
+            resolve: async (parent, args, context, resolveInfo) => {
+                return moment(parent.timestamp).tz(global.TimeZone).format()
+            }
+        },
         side: { type: graphql.GraphQLString },
-        exerciseReps: { type: graphql.GraphQLList(ExerciseRep) },
-        statistics: { type: graphql.GraphQLList(Statistic)},
+        exerciseReps: {
+            type: graphql.GraphQLList(ExerciseRep),
+            args: { repNo: { type: graphql.GraphQLList(graphql.GraphQLInt) } },
+            resolve: async (parent, args, context, resolveInfo) => {
+                sets = await dbmodel.ExerciseRep.findAll({
+                    where:
+                        { [Sequelize.Op.and]: [{ exerciseSetId: parent.id }, args] }
+                })
+                // sets = await dbmodel.ExerciseRep.findAll({ where: { exerciseSetId: parent.id } })
+                return sets;
+            }
+        },
+        statistics: { type: graphql.GraphQLList(Statistic) },
     })
 });
 
@@ -43,14 +64,19 @@ const addExerciseSet = {
     type: ExerciseSet,
     args: {
         sessionId: { type: graphql.GraphQLNonNull(graphql.GraphQLInt) },
-        side: { type: graphql.GraphQLNonNull(graphql.GraphQLString) },
+        side: { type: graphql.GraphQLString },
+        timestamp: { type: graphql.GraphQLNonNull(GrapQLDateTime) },
     },
     resolve: async (parent, args, context, resolveInfo) => {
+        set = await dbmodel.ExerciseSet.findOne({ where: { sessionId: args.sessionId, timestamp: args.timestamp } });
+        if (set) return set;
         session = await dbmodel.Session.findOne({ where: { id: args.sessionId } });
         if (session) {
+            side = "N/A"
+            if (args.side) side = args.side
             set = await dbmodel.ExerciseSet.create({
-                timestamp: Date.now(),
-                side: args.side,
+                timestamp: args.timestamp,
+                side: side,
                 childCount: 0,
                 duration: 0
             });
@@ -65,11 +91,30 @@ const ExerciseRep = new graphql.GraphQLObjectType({
     name: 'ExerciseRep',
     fields: () => ({
         id: { type: graphql.GraphQLInt },
-        childCount: { type: graphql.GraphQLInt },
+        repNo: { type: graphql.GraphQLInt },
         duration: { type: graphql.GraphQLInt },
-        timestamp: { type: GraphQLDateTime },
+        timestamp: {
+            type: graphql.GraphQLString,
+            resolve: async (parent, args, context, resolveInfo) => {
+                return moment(parent.timestamp).tz(global.TimeZone).format()
+            }
+        },
         side: { type: graphql.GraphQLString },
-        statistics: { type: graphql.GraphQLList(Statistic)},
+        statistics: {
+            type: graphql.GraphQLList(Statistic),
+            args: {
+                class: { type: graphql.GraphQLString },
+                description: { type: graphql.GraphQLString },
+                aggregation: { type: graphql.GraphQLString },
+            },
+            resolve: async (parent, args, context, resolveInfo) => {
+                stats = await dbmodel.Statistic.findAll({
+                    where:
+                        { [Sequelize.Op.and]: [{ exerciseRepId: parent.id }, args] }
+                })
+                return stats;
+            }
+        },
     })
 });
 
@@ -100,15 +145,20 @@ const addExerciseRep = {
     args: {
         setId: { type: graphql.GraphQLInt },
         sessionId: { type: graphql.GraphQLInt },
-        side: { type: graphql.GraphQLNonNull(graphql.GraphQLString) },
+        side: { type: graphql.GraphQLString },
+        timestamp: { type: graphql.GraphQLNonNull(GrapQLDateTime) },
     },
     resolve: async (parent, args, context, resolveInfo) => {
         if ("setId" in args) {
+            rep = await dbmodel.ExerciseRep.findOne({ where: { exerciseSetId: args.setId, timestamp: args.timestamp } });
+            if (rep) return rep;
             set = await dbmodel.ExerciseSet.findOne({ where: { id: args.setId } });
             if (set) {
+                side = set.side;
+                if (args.side) side = args.side
                 rep = await dbmodel.ExerciseRep.create({
-                    timestamp: Date.now(),
-                    side: args.side,
+                    timestamp: args.timestamp,
+                    side: side,
                     childCount: 0,
                     duration: 0
                 });
@@ -116,11 +166,15 @@ const addExerciseRep = {
                 return rep;
             }
         } else if ("sessionId" in args) {
+            rep = await dbmodel.ExerciseRep.findOne({ where: { sessionId: args.sessionId, timestamp: args.timestamp } });
+            if (rep) return rep;
             session = await dbmodel.Session.findOne({ where: { id: args.sessionId } });
             if (session) {
+                side = "N/A";
+                if (args.side) side = args.side
                 rep = await dbmodel.ExerciseRep.create({
-                    timestamp: Date.now(),
-                    side: args.side,
+                    timestamp: args.timestamp,
+                    side: side,
                     childCount: 0,
                     duration: 0
                 });

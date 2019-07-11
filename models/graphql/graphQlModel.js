@@ -27,6 +27,7 @@ const QueryRoot = new graphql.GraphQLObjectType({
       addSession: session.mutations.addSession,
       addExercise: exercise.mutations.addExercise,
       addStatistic: statistic.mutations.addStatistic,
+      addStatistics: statistic.mutations.addStatistics,
       addExerciseSet: exercises.mutations.addExerciseSet,
       addExerciseRep: exercises.mutations.addExerciseRep
     })

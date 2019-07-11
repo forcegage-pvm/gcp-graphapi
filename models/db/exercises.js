@@ -5,9 +5,9 @@ class ExerciseSet extends Sequelize.Model {
 }
 
 ExerciseSet.init({
-    childCount: {
+    setNo: {
         type: Sequelize.INTEGER,
-        allowNull: true
+        allowNull: false
     },
     duration: {
         type: Sequelize.INTEGER,
@@ -18,6 +18,10 @@ ExerciseSet.init({
         type: Sequelize.STRING,
         allowNull: false
     },
+    sessionId: {
+        type: Sequelize.INTEGER,
+        allowNull: true
+    },
 }, {
         sequelize, modelName: 'exerciseSet'
     });
@@ -26,9 +30,9 @@ class ExerciseRep extends Sequelize.Model {
     }
 
 ExerciseRep.init({
-    childCount: {
+    repNo: {
         type: Sequelize.INTEGER,
-        allowNull: true
+        allowNull: false
     },
     duration: {
         type: Sequelize.INTEGER,
@@ -38,7 +42,15 @@ ExerciseRep.init({
     side: {
         type: Sequelize.STRING,
         allowNull: true
-    },    
+    },
+    sessionId: {
+        type: Sequelize.INTEGER,
+        allowNull: true
+    },
+    exerciseSetId: {
+        type: Sequelize.INTEGER,
+        allowNull: true
+    },
 }, {
         sequelize, modelName: 'exerciseRep'
     });
