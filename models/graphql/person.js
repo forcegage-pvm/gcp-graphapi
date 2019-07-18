@@ -19,7 +19,7 @@ const Person = new graphql.GraphQLObjectType({
       type: graphql.GraphQLList(session.Session),
       args: { 
         weight: { type: graphql.GraphQLInt },
-        exercise: { type: graphql.GraphQLString },
+        exerciseCd: { type: graphql.GraphQLInt },
       },
       resolve: async (parent, args, context, resolveInfo) => {
         sessions = await dbmodel.Session.findAll({ where: 
@@ -64,12 +64,12 @@ const people = {
     if ("age" in args) {
       age = args.age
       delete args.age
-      results = await dbmodel.Person.findAll({ where: args, include: [{ model: dbmodel.Session, include: [dbmodel.Statistic] }, dbmodel.BodyWeight], });
+      results = await dbmodel.Person.findAll({ where: args, include: [dbmodel.BodyWeight] });
       results = results.filter((pers) => {
         return pers.age == age
       })
     } else {
-      results = await dbmodel.Person.findAll({ where: args, include: [{ model: dbmodel.Session, include: [dbmodel.Statistic] }, dbmodel.BodyWeight], });
+      results = await dbmodel.Person.findAll({ where: args, include: [dbmodel.BodyWeight] });
     }
     return results
   }

@@ -1,11 +1,11 @@
 const graphql = require('graphql')
-const { GraphQLDate, GraphQLTime, GraphQLDateTime } = require('graphql-iso-date');
 const dbmodel = require('../../models/db/dbmodel')
 const { Statistic } = require('../graphql/statistic')
 const { GrapQLDateTime } = require('./dateTimeScalar')
 const Sequelize = require('sequelize')
 const moment = require('moment-timezone')
 const global = require('../../global')
+const { sequelize } = require('../../dbconfig')
 
 // Sets
 const ExerciseSet = new graphql.GraphQLObjectType({
@@ -28,13 +28,32 @@ const ExerciseSet = new graphql.GraphQLObjectType({
             resolve: async (parent, args, context, resolveInfo) => {
                 sets = await dbmodel.ExerciseRep.findAll({
                     where:
-                        { [Sequelize.Op.and]: [{ exerciseSetId: parent.id }, args] }
+                        { [Sequelize.Op.and]: [{ exerciseSetId: parent.id }, args] },
+                    order: [
+                        ['timestamp', 'ASC'],
+                    ]
                 })
-                // sets = await dbmodel.ExerciseRep.findAll({ where: { exerciseSetId: parent.id } })
                 return sets;
             }
         },
-        statistics: { type: graphql.GraphQLList(Statistic) },
+        statistics: {
+            type: graphql.GraphQLList(Statistic),
+            args: {
+                type: { type: graphql.GraphQLList(graphql.GraphQLString) },
+                class: { type: graphql.GraphQLList(graphql.GraphQLString) },
+                aggregation: { type: graphql.GraphQLList(graphql.GraphQLString) }
+            },
+            resolve: async (parent, args, context, resolveInfo) => {
+                var params = ""
+                for (var arg in args) {
+                    vals = ""
+                    args[arg].forEach((e) => { vals += "'" + e + "'," })
+                    params += `AND d.${arg} in (${vals.slice(0, -1)})`
+                }
+                qresult = await sequelize.query("SELECT type, class, aggregation, AVG(VALUE) AS value FROM statistics d WHERE d.exerciseRepId IN (SELECT DISTINCT c.id FROM exerciseSets a INNER JOIN exerciseReps c ON c.exerciseSetId = a.id WHERE a.id = " + parent.id + " "+params+") GROUP BY type, class, aggregation;")
+                return qresult[0];
+            }
+        },
     })
 });
 
@@ -103,9 +122,9 @@ const ExerciseRep = new graphql.GraphQLObjectType({
         statistics: {
             type: graphql.GraphQLList(Statistic),
             args: {
-                class: { type: graphql.GraphQLString },
-                description: { type: graphql.GraphQLString },
-                aggregation: { type: graphql.GraphQLString },
+                type: { type: graphql.GraphQLList(graphql.GraphQLString) },
+                class: { type: graphql.GraphQLList(graphql.GraphQLString) },
+                aggregation: { type: graphql.GraphQLList(graphql.GraphQLString) }
             },
             resolve: async (parent, args, context, resolveInfo) => {
                 stats = await dbmodel.Statistic.findAll({

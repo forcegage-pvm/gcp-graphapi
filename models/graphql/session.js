@@ -5,8 +5,9 @@ const { ExerciseSet, ExerciseRep } = require('../../models/graphql/exercises')
 const { GrapQLDateTime } = require('./dateTimeScalar')
 const moment = require('moment-timezone')
 const global = require('../../global')
+const { sequelize } = require('../../dbconfig')
 
-Date.prototype.getWeekDay = function() {
+Date.prototype.getWeekDay = function () {
   var weekday = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
   return weekday[this.getDay()];
 }
@@ -50,14 +51,14 @@ const Session = new graphql.GraphQLObjectType({
         return date.getWeekDay();
       }
     },
-    time:{
+    time: {
       type: graphql.GraphQLString,
       resolve: async (parent, args, context, resolveInfo) => {
         date = new Date(Date.parse(moment(parent.timestamp).tz(global.TimeZone).format()))
         return date.toLocaleTimeString();
       }
     },
-    timeOfDay:{
+    timeOfDay: {
       type: graphql.GraphQLString,
       resolve: async (parent, args, context, resolveInfo) => {
         date = new Date(Date.parse(moment(parent.timestamp).tz(global.TimeZone).format()))
@@ -69,20 +70,35 @@ const Session = new graphql.GraphQLObjectType({
     weight: { type: graphql.GraphQLInt },
     duration: { type: graphql.GraphQLInt },
     exercise: { type: graphql.GraphQLString },
-    statistics: {
-      type: graphql.GraphQLList(Statistic),
-      resolve: async (parent, args, context, resolveInfo) => {
-        return parent.statistics;
-      }
-    },
     exerciseSets: {
       type: graphql.GraphQLList(ExerciseSet),
       resolve: async (parent, args, context, resolveInfo) => {
-        sets = await dbmodel.ExerciseSet.findAll({ where: { sessionId: parent.id } })
+        sets = await dbmodel.ExerciseSet.findAll({ where: { sessionId: parent.id },
+          order: [
+            ['timestamp', 'ASC'],
+        ], })
         return sets;
       }
     },
     exerciseReps: { type: graphql.GraphQLList(ExerciseRep) },
+    statistics: {
+      type: graphql.GraphQLList(Statistic),
+      args: {
+        type: { type: graphql.GraphQLList(graphql.GraphQLString) },
+        class: { type: graphql.GraphQLList(graphql.GraphQLString) },
+        aggregation: { type: graphql.GraphQLList(graphql.GraphQLString) }
+      },
+      resolve: async (parent, args, context, resolveInfo) => {
+        var params = ""
+        for (var arg in args){
+          vals = ""
+          args[arg].forEach((e) => {vals += "'"+e+"',"})
+          params += `AND d.${arg} in (${vals.slice(0,-1)})`
+        }
+        qresult = await sequelize.query("SELECT type, class, aggregation, AVG(value) as value FROM statistics d WHERE d.exerciseRepId IN (SELECT DISTINCT c.id FROM sessions a INNER JOIN exerciseSets b ON b.sessionId = a.id INNER JOIN exerciseReps c ON c.exerciseSetId = b.id WHERE a.id = " + parent.id + " "+params+") GROUP BY type, class, aggregation")
+        return qresult[0];
+      }
+    },
   })
 });
 
@@ -114,7 +130,7 @@ const session = {
     id: { type: graphql.GraphQLNonNull(graphql.GraphQLInt) }
   },
   resolve: async (parent, args, context, resolveInfo) => {
-    sess = await dbmodel.Session.findOne({ where: args, include: [dbmodel.Exercise, dbmodel.Statistic] });
+    sess = await dbmodel.Session.findOne({ where: args, include: [dbmodel.Exercise] });
     return sess;
   }
 }
@@ -123,15 +139,12 @@ const sessions = {
   type: new graphql.GraphQLList(Session),
   args: {
     weight: { type: graphql.GraphQLInt },
-    id: { type: graphql.GraphQLInt },
+    id: { type:  graphql.GraphQLList(graphql.GraphQLInt) },
     personId: { type: graphql.GraphQLInt }
   },
   //where: (personTable, args, context) => `${playerTable}.id = ${args.id}`,
   resolve: async (parent, args, context, resolveInfo) => {
-    sess = await dbmodel.Session.findAll({
-      where: args, include: [dbmodel.ExerciseRep, dbmodel.Statistic,
-      { model: dbmodel.ExerciseSet, include: [{ model: dbmodel.ExerciseRep, include: dbmodel.Statistic }, dbmodel.Statistic] }]
-    });
+    sess = await dbmodel.Session.findAll({ where: args, include: [dbmodel.Exercise] });
     return sess;
   }
 }

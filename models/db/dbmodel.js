@@ -14,8 +14,6 @@ person.Person.hasMany(session.Session);
 session.Session.belongsTo(person.Person);
 // session can only be for one exercise type
 session.Session.hasOne(exerciseType.Exercise);
-// session can have multiple exercise statistics
-session.Session.hasMany(statistic.Statistic);
 // a session can have 1 or more sets of exercises
 session.Session.hasMany(exercises.ExerciseSet);
 exercises.ExerciseSet.belongsTo(session.Session);
@@ -23,7 +21,6 @@ exercises.ExerciseSet.belongsTo(session.Session);
 exercises.ExerciseSet.hasMany(exercises.ExerciseRep);
 exercises.ExerciseRep.belongsTo(exercises.ExerciseSet);
 // a set and a rep can have many statistics
-exercises.ExerciseSet.hasMany(statistic.Statistic);
 exercises.ExerciseRep.hasMany(statistic.Statistic);
 //
 session.Session.hasMany(exercises.ExerciseRep);

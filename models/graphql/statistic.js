@@ -8,8 +8,8 @@ const global = require('../../global')
 const Statistic = new graphql.GraphQLObjectType({
     name: 'Statistic',
     fields: () => ({
-        cd: { type: graphql.GraphQLInt },
-        description: { type: graphql.GraphQLString },
+        id: { type: graphql.GraphQLInt },
+        type: { type: graphql.GraphQLString },
         class: { type: graphql.GraphQLString },
         aggregation: { type: graphql.GraphQLString },
         value: { type: graphql.GraphQLFloat },
@@ -27,9 +27,9 @@ const statistic = {
 const statistics = {
     type: new graphql.GraphQLList(Statistic),
     args: {
-        description: { type: graphql.GraphQLString },
-        class: { type: graphql.GraphQLString },
-        aggregation: { type: graphql.GraphQLString }
+        type: { type: graphql.GraphQLList(graphql.GraphQLString) },
+        class: { type: graphql.GraphQLList(graphql.GraphQLString) },
+        aggregation: { type: graphql.GraphQLList(graphql.GraphQLString) }
     },
     resolve: async (parent, args, context, resolveInfo) => {
         stats = await dbmodel.Statistic.findAll({ where: args });
@@ -66,7 +66,7 @@ const addStatistics = {
                 ldbSet = {}
                 ldbSet['db'] = dbmodel.ExerciseSet.findOrCreate({
                     where: { sessionId: args.sessionId, timestamp: isoTimestamp },
-                    defaults: { side: "N/A", childCount: 0, duration: 0, setNo: parseInt(setCount) + 1 }
+                    defaults: { side: set.side, childCount: 0, duration: 0, setNo: parseInt(setCount) + 1 }
                 })
                 promises.push(ldbSet['db'])
                 ldbSet['reps'] = []
@@ -75,6 +75,7 @@ const addStatistics = {
                     // stats is the index of the list of stats
                     // stat is the list of stats
                     rep = set[index]
+                    if (index == "side") continue
                     timestamp = new Date(startTimestamp.getTime() + (1000 * rep['start-time']))
                     isoTimestamp = new Date(Date.parse(moment(timestamp).tz(global.TimeZone).format()))
                     ldbRep = {}
@@ -83,6 +84,7 @@ const addStatistics = {
                         side: "N/A",
                         childCount: 0,
                         duration: 0,
+                        side: rep.side,
                         repNo: parseInt(index) + 1
                     });
                     promises.push(ldbRep['db'])
@@ -92,26 +94,41 @@ const addStatistics = {
                         // type is: force/power/etc
                         // typeList is the list of force/power/etc
                         types = rep[type]
+                        if (type == "side") continue
                         for (var statClass in types) {
                             // statClass is the class: Total/Concentric/Eccentric
                             // values is the list of avg/max/min/tm etc
                             values = types[statClass]
                             console.log(values)
-                            for (var aggregate in values) {
-                                // data is tm/avg/max/min
-                                // value is the value
-                                value = values[aggregate]
+                            if (typeof (values) != "object") {
                                 ldbStat = {}
                                 ldbStat['db'] = dbmodel.Statistic.create({
                                     cd: 1,
-                                    description: type,
-                                    class: statClass,
-                                    aggregation: aggregate,
-                                    value: value
+                                    type: type,
+                                    class: "Total",
+                                    aggregation: statClass,
+                                    value: values
                                 })
                                 promises.push(ldbStat['db'])
                                 ldbRep['stats'].push(ldbStat)
                                 eresult.count += 1
+                            } else {
+                                for (var aggregate in values) {
+                                    // data is tm/avg/max/min
+                                    // value is the value
+                                    value = values[aggregate]
+                                    ldbStat = {}
+                                    ldbStat['db'] = dbmodel.Statistic.create({
+                                        cd: 1,
+                                        type: type,
+                                        class: statClass,
+                                        aggregation: aggregate,
+                                        value: value
+                                    })
+                                    promises.push(ldbStat['db'])
+                                    ldbRep['stats'].push(ldbStat)
+                                    eresult.count += 1
+                                }
                             }
                         }
                     }
@@ -144,34 +161,16 @@ const addStatistics = {
 const addStatistic = {
     type: Statistic,
     args: {
-        setId: { type: graphql.GraphQLInt },
-        repId: { type: graphql.GraphQLInt },
-        sessionId: { type: graphql.GraphQLInt },
-        description: { type: graphql.GraphQLNonNull(graphql.GraphQLString) },
+        repId: { type: graphql.GraphQLNonNull(graphql.GraphQLInt) },
+        type: { type: graphql.GraphQLNonNull(graphql.GraphQLString) },
         class: { type: graphql.GraphQLNonNull(graphql.GraphQLString) },
         aggregation: { type: graphql.GraphQLNonNull(graphql.GraphQLString) },
         value: { type: graphql.GraphQLNonNull(graphql.GraphQLFloat) },
     },
     resolve: async (parent, args, context, resolveInfo) => {
-        argCount = 0;
-        if ("sessionId" in args) argCount += 1
-        if ("setId" in args) argCount += 1
-        if ("repId" in args) argCount += 1
-        if ((argCount != 1)) {
-            throw new Error('Statistics can only be added to either session, exerciseSet or exerciseRep. Please supply 1 of either setId, repId or sessionId');
-        }
-        if ("sessionId" in args) {
-            parent = await dbmodel.Session.findOne({ where: { id: args.sessionId }, include: [dbmodel.Statistic] });
-        }
-        if ("setId" in args) {
-            parent = await dbmodel.ExerciseSet.findOne({ where: { id: args.setId }, include: [dbmodel.Statistic] });
-        }
-        if ("repId" in args) {
-            parent = await dbmodel.ExerciseRep.findOne({ where: { id: args.repId }, include: [dbmodel.Statistic] });
-        }
+        parent = await dbmodel.ExerciseRep.findOne({ where: { id: args.repId }, include: [dbmodel.Statistic] });
         stat = await dbmodel.Statistic.create({
-            cd: 1,
-            description: args.description,
+            type: args.type,
             class: args.class,
             aggregation: args.aggregation,
             value: args.value
